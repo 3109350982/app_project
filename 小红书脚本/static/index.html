@@ -1,0 +1,1329 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小红书自动化系统</title>
+    <style>
+        .control-panel { min-height: 0; max-height: 100%; overflow-y: auto; }
+        .data-panel    { min-height: 0; max-height: 100%; overflow-y: auto; }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', Arial, sans-serif;
+            background: #f5f7fa;
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+            line-height: 1.5;
+        }
+        
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            gap: 20px;
+            height: calc(100vh - 40px);
+        }
+        
+        /* 左侧操作面板 */
+        .control-panel {
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            overflow-y: auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .header h1 {
+            color: #1a1a1a;
+            font-size: 1.8em;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        
+        .header .subtitle {
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 15px 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #1890ff;
+        }
+        
+        .stat-number {
+            font-size: 1.4em;
+            font-weight: bold;
+            color: #1890ff;
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 0.8em;
+            font-weight: 500;
+        }
+        
+        .function-section {
+            margin-bottom: 20px;
+            padding: 18px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #1890ff;
+            transition: all 0.3s ease;
+        }
+        
+        .function-section:hover {
+            background: #f0f7ff;
+        }
+        
+        .function-section h3 {
+            color: #1a1a1a;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .control-group {
+            margin-bottom: 12px;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 6px;
+            color: #555;
+            font-weight: 500;
+            font-size: 0.85em;
+        }
+        
+        .control-group input, .control-group textarea, .control-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 13px;
+            transition: all 0.3s ease;
+            background: #ffffff;
+        }
+        
+        .control-group input:focus, .control-group textarea:focus, .control-group select:focus {
+            outline: none;
+            border-color: #1890ff;
+            box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
+        }
+        
+        .control-group textarea {
+            height: 80px;
+            resize: vertical;
+            font-family: inherit;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+        
+        .btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex: 1;
+            justify-content: center;
+        }
+        
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn-primary {
+            background: #1890ff;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #40a9ff;
+        }
+        
+        .btn-success {
+            background: #52c41a;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #73d13d;
+        }
+        
+        .btn-warning {
+            background: #faad14;
+            color: #212529;
+        }
+        
+        .btn-warning:hover {
+            background: #ffc53d;
+        }
+        
+        .btn-danger {
+            background: #ff4d4f;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #ff7875;
+        }
+        
+        .btn-secondary {
+            background: #8c8c8c;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #a6a6a6;
+        }
+        
+        .btn:disabled {
+            background: #d9d9d9;
+            color: #8c8c8c;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        
+        .status-running {
+            background: #52c41a;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-stopped {
+            background: #ff4d4f;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        /* 右侧数据面板 */
+        .data-panel {
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        
+        .data-header {
+            padding: 20px;
+            border-bottom: 1px solid #e8e8e8;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .data-header h2 {
+            color: #1a1a1a;
+            font-size: 1.4em;
+            font-weight: 600;
+        }
+        
+        .bulk-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .selection-info {
+            color: #666;
+            font-size: 0.9em;
+            margin-right: 10px;
+        }
+        
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #e8e8e8;
+            background: #fafafa;
+        }
+        
+        .tab {
+            padding: 12px 20px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .tab:hover {
+            color: #1890ff;
+            background: #f0f7ff;
+        }
+        
+        .tab.active {
+            border-bottom-color: #1890ff;
+            color: #1890ff;
+            font-weight: 600;
+            background: #ffffff;
+        }
+        
+        .tab-content {
+            display: none;
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        .tab-content.active {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .data-container {
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .data-toolbar {
+            padding: 15px 20px;
+            border-bottom: 1px solid #e8e8e8;
+            background: #fafafa;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .toolbar-left, .toolbar-right {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .data-content {
+            flex: 1;
+            overflow: auto;
+            padding: 0;
+        }
+        
+        .log-container {
+            height: 100%;
+            overflow-y: auto;
+            background: #1f1f1f;
+            color: #e0e0e0;
+            padding: 15px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        
+        .log-entry {
+            margin-bottom: 6px;
+            padding: 6px 10px;
+            border-left: 3px solid transparent;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .log-entry.error {
+            border-left-color: #ff4d4f;
+            color: #ff7875;
+            background: rgba(255, 77, 79, 0.1);
+        }
+        
+        .log-entry.warning {
+            border-left-color: #faad14;
+            color: #ffc53d;
+            background: rgba(250, 173, 20, 0.1);
+        }
+        
+        .log-entry.success {
+            border-left-color: #52c41a;
+            color: #73d13d;
+            background: rgba(82, 196, 26, 0.1);
+        }
+        
+        .log-entry.info {
+            border-left-color: #1890ff;
+            color: #69c0ff;
+            background: rgba(24, 144, 255, 0.1);
+        }
+        
+        .items-list {
+            padding: 0;
+        }
+        
+        .item-row {
+            padding: 15px;
+            margin: 0;
+            border-bottom: 1px solid #f0f0f0;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        
+        .item-row:hover {
+            background: #f8f9fa;
+        }
+        
+        .item-row.selected {
+            background: #f0f7ff;
+            border-left: 4px solid #1890ff;
+        }
+        
+        .checkbox-container {
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        
+        .checkbox-container input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+        
+        .item-content {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+        
+        .item-title {
+            font-weight: 600;
+            color: #1a1a1a;
+            font-size: 1em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .item-meta {
+            font-size: 0.8em;
+            color: #666;
+            margin-bottom: 8px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .item-desc {
+            color: #555;
+            margin: 8px 0;
+            line-height: 1.4;
+            background: rgba(255, 255, 255, 0.7);
+            padding: 8px;
+            border-radius: 4px;
+            border-left: 2px solid #e0e0e0;
+            font-size: 0.85em;
+        }
+        
+        .status-badge {
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 0.75em;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+        
+        .status-pending {
+            background: #fff7e6;
+            color: #d46b08;
+            border: 1px solid #ffd591;
+        }
+        
+        .status-sent {
+            background: #f6ffed;
+            color: #389e0d;
+            border: 1px solid #b7eb8f;
+        }
+        
+        .connection-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 8px 14px;
+            border-radius: 16px;
+            font-size: 0.8em;
+            font-weight: 600;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .connected {
+            background: #f6ffed;
+            color: #389e0d;
+            border: 1px solid #b7eb8f;
+        }
+        
+        .disconnected {
+            background: #fff2f0;
+            color: #cf1322;
+            border: 1px solid #ffccc7;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #8c8c8c;
+        }
+        
+        .empty-state .icon {
+            font-size: 2.5em;
+            margin-bottom: 12px;
+            opacity: 0.5;
+        }
+        
+        .empty-state h3 {
+            color: #8c8c8c;
+            margin-bottom: 6px;
+            font-size: 1.1em;
+        }
+        
+        .empty-state p {
+            font-size: 0.9em;
+        }
+        
+        /* 选框样式 */
+        #marquee {
+            position: fixed;
+            border: 2px solid #1890ff;
+            background: rgba(24, 144, 255, 0.1);
+            pointer-events: none;
+            z-index: 1000;
+            display: none;
+        }
+        
+        /* 模态框样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+            width: 90%;
+            max-width: 500px;
+        }
+        
+        .modal-header {
+            margin-bottom: 20px;
+        }
+        
+        .modal-header h3 {
+            color: #1a1a1a;
+            font-size: 1.3em;
+            font-weight: 600;
+        }
+        
+        .modal-body {
+            margin-bottom: 24px;
+        }
+        
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+        
+        .form-group {
+            margin-bottom: 16px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+        
+        .form-group select, .form-group input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        .confirmation-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            text-align: center;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+        
+        .confirmation-input:focus {
+            outline: none;
+            border-color: #1890ff;
+            box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
+        }
+        
+        .compact-control {
+            margin-bottom: 8px;
+        }
+        
+        .advanced-toggle {
+            color: #1890ff;
+            cursor: pointer;
+            font-size: 0.85em;
+            margin-top: 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .advanced-content {
+            display: none;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #e8e8e8;
+        }
+        
+        .advanced-content.show {
+            display: block;
+        }
+        
+        @media (max-width: 1200px) {
+            .container {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+            
+            .control-panel {
+                max-height: 50vh;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .button-group {
+                flex-direction: column;
+            }
+            
+            .data-toolbar {
+                flex-direction: column;
+                gap: 10px;
+                align-items: stretch;
+            }
+            
+            .toolbar-left, .toolbar-right {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 连接状态 -->
+    <div id="connectionStatus" class="connection-status disconnected">
+        🔴 未连接
+    </div>
+
+    <!-- 选框元素（预留，将来要画框选中列表可以直接用） -->
+    <div id="marquee"></div>
+
+    <!-- 许可证模态框 -->
+    <div id="licenseModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h3>🔐 许可证验证</h3></div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>许可证密钥</label>
+                    <input id="licenseKeyInput" type="text" placeholder="VIP-2025-0001">
+                    <div id="licenseInfo" style="margin-top:6px;color:#666;"></div>
+                </div>
+                <div id="licenseErr" style="color:#cf1322;display:none;margin-top:6px;">激活失败</div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="licenseQuitBtn">退出</button>
+                <button class="btn btn-primary" id="licenseOkBtn">验证并继续</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 免责声明模态框 -->
+    <div id="disclaimerModal" class="modal" style="display:none">
+        <div class="modal-content" style="max-width:760px;max-height:80vh;display:flex;flex-direction:column">
+            <div class="modal-header">
+                <h3>📄 使用免责声明</h3>
+            </div>
+            <div class="modal-body" style="overflow:auto">
+                <ol style="margin:0;padding-left:20px;line-height:1.6">
+                    <li>本软件仅用于学习与研究自动化技术，不得用于违反小红书平台用户协议、社区公约及相关法律法规的任何行为。</li>
+                    <li>禁止使用本软件进行垃圾评论、恶意营销、骚扰、诈骗、侵犯隐私、虚假或误导性内容传播等行为。</li>
+                    <li>用户对使用本软件产生的一切后果承担全部责任，开发者不承担任何直接或间接责任。</li>
+                    <li>如不同意上述条款，请立即关闭并删除本软件。</li>
+                </ol>
+            </div>
+            <div class="modal-footer" style="gap:8px">
+                <button class="btn btn-secondary" id="disclaimerQuitBtn">退出程序</button>
+                <button class="btn btn-primary" id="disclaimerAckBtn">我已知晓</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- 左侧操作面板 -->
+        <div class="control-panel">
+            <div class="header">
+                <h1>📕 小红书自动化系统</h1>
+                <p class="subtitle">笔记 / 视频采集 · 评论 · 自动回复</p>
+            </div>
+
+            <!-- 简单统计：这里可以后端做 /api/xhs/stats 再加 -->
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <span class="stat-number" id="totalItems">0</span>
+                    <span class="stat-label">总笔记/视频</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number" id="commentedItems">0</span>
+                    <span class="stat-label">已评论</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number" id="pendingItems">0</span>
+                    <span class="stat-label">待评论</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number" id="watchedItems">0</span>
+                    <span class="stat-label">监听中</span>
+                </div>
+            </div>
+
+            <!-- 系统控制 -->
+            <div class="function-section">
+                <h3>🚀 系统控制</h3>
+                <div class="button-group">
+                    <button class="btn btn-primary" id="startBrowserBtn">🖥️ 启动浏览器</button>
+                    <button class="btn btn-danger"  id="stopAllServicesBtn">🛑 停止所有任务</button>
+                </div>
+            </div>
+
+            <!-- 关键词采集 -->
+            <div class="function-section">
+                <h3>📎 关键词采集笔记 / 视频</h3>
+                <div class="control-group compact-control">
+                    <label>内容关键词（空格分隔）</label>
+                    <input id="keywordsInput" type="text" placeholder="减肥 美食 穿搭">
+                </div>
+                <div class="control-group compact-control">
+                    <label>类型</label>
+                    <select id="collectType">
+                        <option value="note">笔记</option>
+                        <option value="video">视频</option>
+                    </select>
+                </div>
+                <div class="control-group compact-control">
+                    <label>每个关键词采集数量</label>
+                    <input id="itemsPerKeyword" type="number" value="10" min="1" max="9999">
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-success" id="startCollectBtn">🚀 开始采集</button>
+                </div>
+            </div>
+
+            <!-- 对选中项发表评论 -->
+            <div class="function-section">
+                <h3>💬 对选中笔记 / 视频评论</h3>
+                <div class="control-group compact-control">
+                    <label>评论内容模板（一次只对每条笔记/视频发一条）</label>
+                    <textarea id="commentTemplate">你好，看到你的笔记 / 视频很不错，特来交流一下～</textarea>
+                </div>
+                <div class="advanced-toggle" onclick="toggleAdvanced('commentAdvanced')">
+                    ⚙️ 评论间隔与数量
+                </div>
+                <div class="advanced-content" id="commentAdvanced">
+                    <div class="control-group compact-control">
+                        <label>两条评论最短间隔（分钟）</label>
+                        <input id="minIntervalMin" type="number" value="3" min="1" max="3600">
+                    </div>
+                    <div class="control-group compact-control">
+                        <label>两条评论最长间隔（分钟）</label>
+                        <input id="maxIntervalMin" type="number" value="60" min="1" max="3600">
+                    </div>
+                    <div class="control-group compact-control">
+                        <label>本次任务最多评论总数</label>
+                        <input id="maxCommentTotal" type="number" value="999" min="1" max="9999">
+                    </div>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-success" id="startCommentBtn">🚀 对选中项开始评论</button>
+                </div>
+            </div>
+
+            <!-- 监听 + 自动回复 -->
+            <div class="function-section">
+                <h3>👀 监听最新评论 + 自动回复</h3>
+                <div class="control-group compact-control">
+                    <label>规则配置（JSON 格式）</label>
+                    <textarea id="rulesInput" placeholder='[{"keywords":["咨询","了解"],"reply":"你好，可以点进主页私聊我～"},{"keywords":["怎么弄"],"reply":"可以私信我详细说一下需求."}]'></textarea>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-success" id="startWatchBtn">🚀 启动监听</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧数据面板 -->
+        <div class="data-panel">
+            <div class="data-header">
+                <h2>📊 数据监控</h2>
+                <div class="bulk-actions">
+                    <span class="selection-info" id="selectionInfo">已选 0 项</span>
+                    <button class="btn btn-secondary" id="selectAllBtn">全选</button>
+                    <button class="btn btn-secondary" id="clearSelectionBtn">清空选择</button>
+                    <button class="btn btn-danger" id="clearLogsBtn">清空日志</button>
+                </div>
+            </div>
+
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('logs',this)">📝 系统日志</div>
+                <div class="tab" onclick="switchTab('items',this)">📄 笔记 / 视频列表</div>
+            </div>
+
+            <div class="data-container">
+                <!-- 日志 -->
+                <div id="logsTab" class="tab-content active">
+                    <div class="data-content">
+                        <div class="log-container" id="logContainer">
+                            <div class="log-entry info">等待系统连接...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 笔记 / 视频列表 -->
+                <div id="itemsTab" class="tab-content">
+                    <div class="data-toolbar">
+                        <div class="toolbar-left">
+                            <span class="selection-info" id="itemsSelectionInfo">已选 0 项</span>
+                            <button class="btn btn-secondary" id="refreshItemsBtn">刷新列表</button>
+                        </div>
+                        <div class="toolbar-right">
+                            <select id="itemSort" style="padding:6px 10px;border:1px solid #e8e8e8;border-radius:6px;">
+                                <option value="collect_time">按采集时间</option>
+                                <option value="publish_time">按发布时间</option>
+                                <option value="like_count">按点赞数</option>
+                                <option value="comment_count">按评论数</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="data-content">
+                        <div class="items-list" id="itemsList">
+                            <div class="empty-state">
+                                <div class="icon">📄</div>
+                                <h3>暂无数据</h3>
+                                <p>请先在左侧运行关键词采集功能</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div><!-- data-container -->
+        </div><!-- data-panel -->
+    </div><!-- container -->
+
+    <script>
+        let ws = null;
+        let reconnectInterval = null;
+        let selectedItems = new Set();
+
+        function toggleAdvanced(id) {
+            const el = document.getElementById(id);
+            if (el) el.classList.toggle('show');
+        }
+
+        function switchTab(tabName, el) {
+            document.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('active'));
+            if (el) el.classList.add('active');
+            document.querySelectorAll('.tab-content').forEach(p => p.classList.remove('active'));
+            document.getElementById(tabName + 'Tab').classList.add('active');
+        }
+
+        function updateConnectionStatus(connected) {
+            const statusElement = document.getElementById('connectionStatus');
+            if (connected) {
+                statusElement.textContent = '🟢 已连接';
+                statusElement.className = 'connection-status connected';
+            } else {
+                statusElement.textContent = '🔴 未连接';
+                statusElement.className = 'connection-status disconnected';
+            }
+        }
+
+        function addLog(message, type = 'info') {
+            const logContainer = document.getElementById('logContainer');
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry ${type}`;
+            const timestamp = new Date().toLocaleTimeString();
+            logEntry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+            if (logContainer.children.length > 1000) {
+                logContainer.removeChild(logContainer.firstChild);
+            }
+        }
+        // 兼容旧代码：把 log / toast / wsOn 映射到当前日志系统，避免报错
+        function log(msg) {
+            addLog(String(msg), 'info');
+        }
+
+        function toast(msg) {
+            addLog(String(msg), 'info');
+        }
+
+        function wsOn(/* eventName, handler */) {
+            // 目前后端没有自定义 ws 事件，这里占位，避免旧代码报错
+        }
+
+        function clearLogs() {
+            document.getElementById('logContainer').innerHTML = '';
+            addLog('📝 日志已清空', 'info');
+        }
+
+        async function apiPost(endpoint, body) {
+            try {
+                const res = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify(body || {})
+                });
+                return await res.json();
+            } catch (e) {
+                addLog(`❌ API 调用失败: ${e}`, 'error');
+                return {ok:false, message:String(e)};
+            }
+        }
+
+        // WebSocket
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws`;
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                updateConnectionStatus(true);
+                addLog('✅ 已连接到系统', 'success');
+                if (reconnectInterval) {
+                    clearInterval(reconnectInterval);
+                    reconnectInterval = null;
+                }
+            };
+
+            ws.onclose = () => {
+                updateConnectionStatus(false);
+                addLog('❌ 连接已断开，尝试重连...', 'error');
+                if (!reconnectInterval) {
+                    reconnectInterval = setInterval(connectWebSocket, 5000);
+                }
+            };
+
+            ws.onerror = () => {
+                addLog('❌ WebSocket错误', 'error');
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    handleWebSocketMessage(data);
+                } catch(e) {
+                    addLog(event.data, 'info');
+                }
+            };
+        }
+
+        function handleWebSocketMessage(data) {
+            switch(data.type) {
+                case 'connected':
+                    addLog(data.msg, 'success');
+                    break;
+                case 'operation':
+                    addLog(data.msg, 'info');
+                    break;
+                case 'error':
+                    addLog(data.msg, 'error');
+                    break;
+                default:
+                    addLog(JSON.stringify(data), 'info');
+            }
+        }
+
+        // 许可证相关
+        function showLic() {
+            document.getElementById('licenseModal').style.display = 'flex';
+        }
+        function hideLic() {
+            document.getElementById('licenseModal').style.display = 'none';
+        }
+        function showDisclaimer() {
+            document.getElementById('disclaimerModal').style.display = 'flex';
+        }
+        function hideDisclaimer() {
+            document.getElementById('disclaimerModal').style.display = 'none';
+        }
+
+        async function showLicenseModalAlways() {
+            showLic();
+            const info = document.getElementById('licenseInfo');
+            try {
+                const res = await fetch('/api/license/status');
+                const j = await res.json();
+                if (j.valid) {
+                    info.textContent = '当前密钥有效，到期时间：' + new Date(j.expires_at * 1000).toLocaleString();
+                    const okBtn = document.getElementById('licenseOkBtn');
+                    okBtn.textContent = '继续使用';
+                    okBtn.onclick = () => {
+                        hideLic();
+                        bindDisclaimerUI();
+                        showDisclaimer();
+                    };
+                } else {
+                    info.textContent = '当前无有效密钥，请输入后点击验证并继续';
+                }
+            } catch(e) {
+                info.textContent = '无法获取许可证状态：' + e.message;
+            }
+        }
+
+        async function doActivate(){
+            const key = (document.getElementById('licenseKeyInput').value||'').trim();
+            const err = document.getElementById('licenseErr');
+            err.style.display='none';
+            if(!key){
+                err.textContent='请输入密钥';
+                err.style.display='block';
+                return;
+            }
+            const r = await apiPost('/api/license/activate', {key});
+            if (r.ok){
+                hideLic();
+                bindDisclaimerUI();
+                showDisclaimer();
+            } else {
+                err.textContent='激活失败：'+(r.message||'');
+                err.style.display='block';
+            }
+        }
+
+        function bindLicenseUI(){
+            const okBtn=document.getElementById('licenseOkBtn');
+            const qBtn=document.getElementById('licenseQuitBtn');
+            if (okBtn) okBtn.onclick = doActivate;
+            if (qBtn) qBtn.onclick = () => { try{ fetch('/api/app/quit',{method:'POST'}) }catch(e){} window.close(); };
+        }
+
+        function bindDisclaimerUI(){
+            const quitBtn = document.getElementById('disclaimerQuitBtn');
+            const ackBtn = document.getElementById('disclaimerAckBtn');
+            if (quitBtn) quitBtn.onclick = () => { try{ fetch('/api/app/quit',{method:'POST'}) }catch(e){} window.close(); };
+            if (ackBtn) ackBtn.onclick = () => { hideDisclaimer(); initializeApp(); };
+        }
+
+        // 初始化
+        function initializeApp() {
+            connectWebSocket();
+            bindMainEventListeners();
+            refreshItems();
+        }
+
+        function bindMainEventListeners(){
+            document.getElementById('clearLogsBtn').onclick = clearLogs;
+
+            document.getElementById('startBrowserBtn').onclick = async () => {
+                addLog('🖥️ 正在启动浏览器...', 'info');
+                const r = await apiPost('/api/browser/start', {});
+                if (r.ok) addLog('✅ 浏览器已启动', 'success');
+                else addLog('❌ 启动失败: '+(r.message||''), 'error');
+            };
+
+            document.getElementById('stopAllServicesBtn').onclick = async () => {
+                const r = await apiPost('/api/app/stop_all', {});
+                if (r.ok) addLog('🛑 已请求停止所有任务', 'warning');
+                else addLog('❌ 停止失败: '+(r.message||''), 'error');
+            };
+
+            document.getElementById('startCollectBtn').onclick = startCollect;
+            document.getElementById('startCommentBtn').onclick = startCommentForSelected;
+            document.getElementById('startWatchBtn').onclick = startWatch;
+
+            document.getElementById('refreshItemsBtn').onclick = refreshItems;
+            document.getElementById('itemSort').onchange = refreshItems;
+
+            document.getElementById('selectAllBtn').onclick = selectAllItems;
+            document.getElementById('clearSelectionBtn').onclick = clearSelection;
+        }
+
+        async function startCollect() {
+            const keywordsInput = document.getElementById('keywordsInput');
+            const typeSelect = document.getElementById('collectType');
+            const limitInput = document.getElementById('itemsPerKeyword');
+
+            const keywords = (keywordsInput.value || '').trim();
+            const itemsPerKeyword = parseInt(limitInput.value || '10', 10);
+            const itemType = (typeSelect.value || 'note');
+
+            if (!keywords) {
+                addLog('❌ 请输入关键词', 'error');
+                return;
+            }
+
+            addLog(
+                `🚀 下发采集任务：${keywords}（每个关键词 ${itemsPerKeyword} 条，类型=${itemType}）`,
+                'info'
+            );
+
+            const r = await apiPost('/api/xhs/collect/start', {
+                keywords: keywords,
+                items_per_keyword: itemsPerKeyword,
+                type: itemType
+            });
+
+            if (r.ok) {
+                addLog('✅ 采集任务已启动，请查看浏览器窗口中的自动滚动与采集日志', 'success');
+            } else {
+                addLog('❌ 启动采集任务失败：' + (r.message || ''), 'error');
+            }
+        }
+
+
+        // WebSocket 事件：追加 done 监听
+        wsOn('xhs:collect:done', (payload) => {
+        const { new: n, seen } = payload || {};
+        toast(`采集完成：新增 ${n || 0} 条，已存在 ${seen || 0} 条`);
+        log(`🎉 采集完成：新增 ${n || 0}，已存在 ${seen || 0}`);
+        refreshItems();                     // 自动刷新表格
+        const btn = document.getElementById('btn-collect');
+        if (btn) btn.disabled = false;      // 解禁按钮
+        });
+
+        function getSelectedItemUrls(){
+            return Array.from(selectedItems);
+        }
+
+        async function startCommentForSelected(){
+            const urls = getSelectedItemUrls();
+            if (!urls.length){
+                addLog('❌ 请先在右侧列表中勾选要评论的笔记/视频', 'error');
+                return;
+            }
+            const message = document.getElementById('commentTemplate').value;
+            const minInt = parseInt(document.getElementById('minIntervalMin').value || '3');
+            const maxInt = parseInt(document.getElementById('maxIntervalMin').value || '60');
+            const maxTotal = parseInt(document.getElementById('maxCommentTotal').value || '999');
+            addLog(`💬 对选中 ${urls.length} 个链接开始评论，最短间隔=${minInt} 分钟，最长间隔=${maxInt} 分钟，总数上限=${maxTotal}`, 'info');
+            const r = await apiPost('/api/xhs/comment/start', {
+                message,
+                selected_items: urls,
+                min_interval_min: minInt,
+                max_interval_min: maxInt,
+                max_total: maxTotal
+            });
+            if (r.ok) addLog('✅ 已启动评论任务', 'success');
+            else addLog('❌ 启动评论任务失败: '+(r.message||''), 'error');
+        }
+
+        async function startWatch(){
+            const urls = getSelectedItemUrls();
+            if (!urls.length){
+                addLog('❌ 监听前请至少选中一个笔记/视频链接', 'error');
+                return;
+            }
+            let rules = [];
+            try{
+                rules = JSON.parse(document.getElementById('rulesInput').value || '[]');
+            }catch(e){
+                addLog('❌ 规则 JSON 解析失败: '+e.message, 'error');
+                return;
+            }
+            addLog(`👀 对 ${urls.length} 个链接启用监听 + 自动回复`, 'info');
+            const r = await apiPost('/api/xhs/watch/start', {
+                watch_items: urls,
+                rule_groups: rules
+            });
+            if (r.ok) addLog('✅ 已启动监听任务', 'success');
+            else addLog('❌ 启动监听任务失败: '+(r.message||''), 'error');
+        }
+
+        // 列表渲染（这里对接 /api/xhs/items/list 之类的接口；如果你暂时没有，可以先不写后端）
+        async function refreshItems(){
+            // 这里演示用，你可以在后端加一个 /api/xhs/items/list 返回 DB 里的 xhs_items
+            try{
+                const sort = document.getElementById('itemSort').value;
+                const res = await fetch('/api/xhs/items/list?sort='+encodeURIComponent(sort));
+                if (!res.ok){
+                    addLog('⚠️ 获取列表失败（可以先不实现这个接口）', 'warning');
+                    return;
+                }
+                const data = await res.json();
+                renderItems(data.items || []);
+            }catch(e){
+                addLog('⚠️ 刷新列表失败: '+e.message, 'warning');
+            }
+        }
+
+        function renderItems(items){
+            const list = document.getElementById('itemsList');
+            list.innerHTML = '';
+            selectedItems = new Set([...selectedItems]); // 保持已有选择
+            if (!items.length){
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">📄</div>
+                        <h3>暂无数据</h3>
+                        <p>请先在左侧运行关键词采集功能</p>
+                    </div>
+                `;
+                updateSelectionInfo();
+                return;
+            }
+            items.forEach(it => {
+                const row = document.createElement('div');
+                row.className = 'item-row';
+                const key = it.item_url;
+                const checked = selectedItems.has(key);
+                if (checked) row.classList.add('selected');
+                row.innerHTML = `
+                    <div class="checkbox-container">
+                        <input type="checkbox" data-url="${key}" ${checked ? 'checked':''}>
+                    </div>
+                    <div class="item-content">
+                        <div class="item-header">
+                            <div class="item-title" title="${it.title||''}">${it.title||'(无标题)'}</div>
+                            <span class="status-badge ${it.comment_status==='commented'?'status-sent':'status-pending'}">
+                                ${it.comment_status==='commented'?'已评论':'未评论'}
+                            </span>
+                        </div>
+                        <div class="item-meta">
+                            <span>类型: ${it.type||''}</span>
+                            <span>关键词: ${it.keyword||''}</span>
+                            <span>发布时间: ${it.publish_time||''}</span>
+                            <span>赞: ${it.like_count||0}</span>
+                            <span>收藏: ${it.collect_count||0}</span>
+                            <span>评: ${it.comment_count||0}</span>
+                        </div>
+                        <div class="item-desc">
+                            <a href="${key}" target="_blank">${key}</a>
+                        </div>
+                    </div>
+                `;
+                const cb = row.querySelector('input[type="checkbox"]');
+                cb.addEventListener('change', () => {
+                    if (cb.checked) selectedItems.add(key);
+                    else selectedItems.delete(key);
+                    if (cb.checked) row.classList.add('selected');
+                    else row.classList.remove('selected');
+                    updateSelectionInfo();
+                });
+                list.appendChild(row);
+            });
+            updateSelectionInfo();
+        }
+
+        function updateSelectionInfo(){
+            const count = selectedItems.size;
+            document.getElementById('selectionInfo').textContent = `已选 ${count} 项`;
+            document.getElementById('itemsSelectionInfo').textContent = `已选 ${count} 项`;
+        }
+
+        function selectAllItems(){
+            const checkboxes = document.querySelectorAll('#itemsList input[type="checkbox"]');
+            checkboxes.forEach(cb => {
+                cb.checked = true;
+                const url = cb.dataset.url;
+                if (url) selectedItems.add(url);
+                const row = cb.closest('.item-row');
+                if (row) row.classList.add('selected');
+            });
+            updateSelectionInfo();
+        }
+
+        function clearSelection(){
+            selectedItems.clear();
+            const checkboxes = document.querySelectorAll('#itemsList input[type="checkbox"]');
+            checkboxes.forEach(cb => {
+                cb.checked = false;
+                const row = cb.closest('.item-row');
+                if (row) row.classList.remove('selected');
+            });
+            updateSelectionInfo();
+        }
+
+        // 页面加载：先授权 -> 免责声明 -> 初始化
+        document.addEventListener('DOMContentLoaded', async function () {
+            bindLicenseUI();
+            showLicenseModalAlways();
+        });
+    </script>
+</body>
+</html>
