@@ -2,7 +2,7 @@
 import asyncio
 import os
 from typing import Optional
-
+from settings import SETTINGS
 try:
     from playwright.async_api import Error, TargetClosedError, async_playwright, BrowserContext, Page
 except ImportError:
@@ -102,6 +102,7 @@ class BrowserManager:
     async def new_page(self) -> Page:
         # 改为“复用优先”：如果已有未关闭的页，就复用；没有再新建
         last_error = None
+        home_url = SETTINGS["XHS"].get("HOME_URL", "https://www.xiaohongshu.com/explore")
         for _ in range(2):
             await self.ensure_browser()
             assert self._context is not None
@@ -116,12 +117,20 @@ class BrowserManager:
                     await page.bring_to_front()
                 except Exception:
                     pass
-                print("🧭 [XHS][Browser] 复用现有标签页")
+                try:
+                    current_url = page.url
+                except Exception:
+                    current_url = ""
+                if not current_url or current_url.startswith("about:"):
+                    await page.goto(home_url)
+                    print("🧭 [XHS][Browser] 复用标签页并跳转主页")
+                else:
+                    print("🧭 [XHS][Browser] 复用现有标签页")
                 return page
             try:
                 page = await self._context.new_page()
-                await page.goto("https://www.xiaohongshu.com/explore")
-                print("🧭 [XHS][Browser] 新建标签页")
+                await page.goto(home_url)
+                print("🧭 [XHS][Browser] 新建标签页并打开主页")
                 return page
             except (TargetClosedError, Error) as e:
                 last_error = e
