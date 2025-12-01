@@ -98,8 +98,6 @@ async def ws_endpoint(ws: WebSocket):
 async def api_license_status():
     return lic_status()
 
-# 仅在你没有此接口时添加；若已有，实现需返回相同字段
-
 
 @app.post("/api/license/activate")
 async def api_license_activate(payload: Dict[str, Any] = Body(...)):
