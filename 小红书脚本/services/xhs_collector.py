@@ -147,6 +147,17 @@ class XHSCollectorService:
                         )
                         publish_ts = int(time.time())
 
+                        # 如果卡片缺失字段，则尝试从搜索页全局状态 JSON 兜底提取
+                        if (not title or not author_name or like_count == 0) and href:
+                            note_id = href.split("/")[-1].split("?")[0]
+                            state_info = await self._fetch_state_info(page, note_id)
+                            title = title or state_info.get("title", "")
+                            author_name = author_name or state_info.get("author_name", "")
+                            like_count = like_count or state_info.get("like_count", 0)
+                            comment_count = comment_count or state_info.get("comment_count", 0)
+                            publish_time = publish_time or state_info.get("publish_time", "")
+                            publish_ts = state_info.get("publish_ts", publish_ts)
+
                         item = {
                             "source": "xhs",
                             "item_url": href,
@@ -184,3 +195,104 @@ class XHSCollectorService:
                 await page.close()
             except Exception:
                 pass
+
+    async def _fetch_state_info(self, page, note_id: str) -> dict:
+        """从搜索页的全局 JSON 里按 note_id 兜底取标题/作者/互动数据"""
+        info = {
+            "title": "",
+            "author_name": "",
+            "like_count": 0,
+            "comment_count": 0,
+            "publish_time": "",
+            "publish_ts": 0,
+        }
+
+        if not note_id:
+            return info
+
+        try:
+            state = await page.evaluate(
+                """
+                (id) => {
+                    const raw = window.__INITIAL_STATE__ || window.__REDUX_STATE__ || {};
+
+                    const listCandidates = [
+                        raw?.feed?.notes,
+                        raw?.search?.notes,
+                        raw?.search?.general?.notes,
+                        raw?.search?.noteList,
+                        raw?.explore?.notes,
+                    ].flat().filter(Boolean);
+
+                    const mapCandidates = [
+                        raw?.note?.noteMap,
+                        raw?.note?.noteDetailMap,
+                        raw?.feed?.noteMap,
+                        raw?.feedNoteMap,
+                        raw?.noteMap,
+                    ].filter(Boolean);
+
+                    const findNote = (n) => n && (n.id === id || n.noteId === id || n.note_id === id);
+                    const noteFromList = Array.isArray(listCandidates)
+                        ? listCandidates.find(findNote)
+                        : null;
+
+                    let noteFromMap = null;
+                    for (const m of mapCandidates) {
+                        if (m[id]) { noteFromMap = m[id]; break; }
+                        if (typeof id === 'string' && m[id.toLowerCase?.()]) { noteFromMap = m[id.toLowerCase()]; break; }
+                    }
+
+                    const note = noteFromList || noteFromMap || {};
+                    const noteCard = note.noteCard || note.card || {};
+
+                    const interact =
+                        note.interactInfo ||
+                        note.interactionInfo ||
+                        note.stats ||
+                        noteCard.interactInfo ||
+                        noteCard.interactionInfo ||
+                        {};
+
+                    const user =
+                        note.user ||
+                        note.creator ||
+                        note.author ||
+                        noteCard.user ||
+                        noteCard.author ||
+                        {};
+
+                    return {
+                        title: note.title || note.desc || note.displayTitle || noteCard.title || noteCard.desc || noteCard.displayTitle || '',
+                        author_name: user.nickname || user.nickName || user.name || user.userName || '',
+                        like_count:
+                            Number(
+                                interact.likedCount ||
+                                interact.likeCount ||
+                                interact.likes ||
+                                interact.liked ||
+                                interact.like_num ||
+                                interact.favoredCount ||
+                                interact.favoriteCount ||
+                                0,
+                            ) || 0,
+                        comment_count: Number(interact.commentCount || interact.comments || interact.comment || interact.comment_num || 0) || 0,
+                        publish_time: note.time || note.displayTime || note.createTime || note.publishedAt || noteCard.time || noteCard.displayTime || '',
+                        publish_ts: Number(note.time || note.createTime || note.timestamp || note.publishedAt || noteCard.time || 0) || 0,
+                    };
+                }
+                """,
+                note_id,
+            )
+            if state:
+                info.update({k: v for k, v in state.items() if v})
+        except Exception:
+            pass
+
+        if not info["publish_ts"] and info["publish_time"]:
+            try:
+                info["publish_ts"] = int(info["publish_time"])
+            except Exception:
+                info["publish_ts"] = int(time.time())
+
+        return info
