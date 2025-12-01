@@ -32,6 +32,7 @@ class DataStorage:
                 source TEXT,
                 item_url TEXT UNIQUE,
                 title TEXT,
+                author_name TEXT,
                 keyword TEXT,
                 publish_time TEXT,
                 publish_ts INTEGER,
@@ -45,6 +46,12 @@ class DataStorage:
             )
             """
             )
+            cur.execute("PRAGMA table_info(xhs_items)")
+            cols = {r[1] for r in cur.fetchall()}
+            if "author_name" not in cols:
+                cur.execute(
+                    "ALTER TABLE xhs_items ADD COLUMN author_name TEXT DEFAULT ''"
+                )
 
             # 评论记录（监听 + 自动回复）
             cur.execute(
@@ -72,11 +79,12 @@ class DataStorage:
             cur.execute(
                 """
             INSERT INTO xhs_items
-              (source, item_url, title, keyword, publish_time, publish_ts,
+              (source, item_url, title, author_name, keyword, publish_time, publish_ts,
                like_count, collect_count, comment_count, type, collected_time)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(item_url) DO UPDATE SET
                title = excluded.title,
+               author_name = excluded.author_name,
                keyword = excluded.keyword,
                publish_time = excluded.publish_time,
                publish_ts = excluded.publish_ts,
@@ -90,6 +98,7 @@ class DataStorage:
                     item.get("source", "xhs"),
                     item["item_url"],
                     item.get("title", ""),
+                    item.get("author_name", ""),
                     item.get("keyword", ""),
                     item.get("publish_time", ""),
                     int(item.get("publish_ts", 0)),

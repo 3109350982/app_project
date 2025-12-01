@@ -84,13 +84,29 @@ class XHSCollectorService:
                         if href.startswith("/"):
                             href = "https://www.xiaohongshu.com" + href
 
-                        title_el = await card.query_selector(
-                            selectors["item_title"]
-                        )
-                        title = (
-                            (await title_el.inner_text()).strip()
-                            if title_el
-                            else ""
+                        async def _first_text(el, sel_list):
+                            # 兼容字符串或列表传入
+                            if isinstance(sel_list, str):
+                                selectors_list = [sel_list]
+                            else:
+                                selectors_list = sel_list or []
+
+                            for sel in selectors_list:
+                                if not sel:
+                                    continue
+                                target = await el.query_selector(sel)
+                                if target:
+                                    text = (await target.inner_text()).strip()
+                                    if not text:
+                                        attr_text = await target.get_attribute("title")
+                                        text = (attr_text or "").strip()
+                                    if text:
+                                        return text
+                            return ""
+
+                        title = await _first_text(card, [selectors["item_title"]])
+                        author_name = await _first_text(
+                            card, selectors.get("item_author_selectors", [])
                         )
                         # 原 _parse_int 替换为：
                         def _parse_int(text: str) -> int:
@@ -114,31 +130,28 @@ class XHSCollectorService:
                         like_count = 0
                         comment_count = 0
 
-                        if selectors["item_like_count"]:
-                            el = await card.query_selector(
-                                selectors["item_like_count"]
-                            )
-                            if el:
-                                like_count = _parse_int(
-                                    (await el.inner_text()).strip()
-                                )
+                        like_text = await _first_text(
+                            card, selectors.get("item_like_count_selectors", [])
+                        )
+                        if like_text:
+                            like_count = _parse_int(like_text)
 
-                        if selectors["item_comment_count"]:
-                            el = await card.query_selector(
-                                selectors["item_comment_count"]
-                            )
-                            if el:
-                                comment_count = _parse_int(
-                                    (await el.inner_text()).strip()
-                                )
+                        comment_text = await _first_text(
+                            card, selectors.get("item_comment_count_selectors", [])
+                        )
+                        if comment_text:
+                            comment_count = _parse_int(comment_text)
 
-                        publish_time = ""
+                        publish_time = await _first_text(
+                            card, selectors.get("item_publish_time_selectors", [])
+                        )
                         publish_ts = int(time.time())
 
                         item = {
                             "source": "xhs",
                             "item_url": href,
                             "title": title,
+                            "author_name": author_name,
                             "keyword": kw,
                             "publish_time": publish_time,
                             "publish_ts": publish_ts,
