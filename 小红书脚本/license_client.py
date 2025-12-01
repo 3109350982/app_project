@@ -133,7 +133,7 @@ class LicenseClient:
         payload = {
             "key": key,
             "hwid": _hwid(),
-            "product": "douyin-auto",  # 和你原来抖音脚本保持一致
+            "product": "xhs-auto",  # 和你原来抖音脚本保持一致
             "ttl_hours": 1,
         }
 

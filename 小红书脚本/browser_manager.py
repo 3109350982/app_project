@@ -3,7 +3,15 @@ import asyncio
 import os
 from typing import Optional
 
-from playwright.async_api import Error, async_playwright, BrowserContext, Page
+try:
+    from playwright.async_api import Error, TargetClosedError, async_playwright, BrowserContext, Page
+except ImportError:
+    # 兼容旧版 Playwright，缺失 TargetClosedError 时降级为基础错误类型
+    from playwright.async_api import Error, async_playwright, BrowserContext, Page
+    try:
+        from playwright._impl._api_types import TargetClosedError  # type: ignore
+    except Exception:  # pragma: no cover - 仅在旧版 Playwright 下兜底
+        TargetClosedError = Error
 
 
 class BrowserManager:
@@ -23,7 +31,6 @@ class BrowserManager:
         if self._browser and self._context and self._page:
             return self._page
 
-        from playwright.async_api import async_playwright
         self._pw = await async_playwright().start()
 
         # 统一走 edge（与你抖音相同）
@@ -116,7 +123,7 @@ class BrowserManager:
                 await page.goto("https://www.xiaohongshu.com/explore")
                 print("🧭 [XHS][Browser] 新建标签页")
                 return page
-            except TargetClosedError as e:
+            except (TargetClosedError, Error) as e:
                 last_error = e
                 await self._reset_context()
 
