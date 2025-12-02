@@ -27,6 +27,18 @@ SETTINGS = {
             "item_link":        "a.cover, a.cover.mask, a.note-link, a[href^='/explore/']",
             # 标题：<div class="title"><span>标题</span></div>
             "item_title":       "div.title span",
+            "item_title_selectors": [
+                "div.title span",
+                "div.note-title span",
+                "div.content span.title",
+                "div.note-content div.title span",
+                "div.note-content div.title",
+                "div.meta div.title span",
+                "a.cover div.title span",
+                "a.cover[title]",
+                "a.note-link[title]",
+                "a.cover[aria-label]",
+                ],
             # 作者昵称（多备用选择器）
             "item_author_selectors": [
                 "div.info a.user",
@@ -35,9 +47,22 @@ SETTINGS = {
                 "div.user-info a",
                 "div.author a",
                 "div.author a.name",
+                "div.author span.name",
+                "div.bottom div.user a",
+                "div.bottom div.user span",
                 "div.bottom-wrapper .author a",
+                "div.bottom-wrapper .user a",
                 "div.footer div.author a",
                 "div.footer div.author a.name",
+            ],
+            "item_author_fallback_selectors": [
+                "div.user span.username",
+                "div.user .name",
+                "div.user-info span.name",
+                "div.footer .user-info span",
+                "a.author-name",
+                "span.nickname",
+                "a.user-name",
             ],
             # 底部各种数值区域（如果后面要扩展可复用）
             "item_counts":      ".card-bottom-wrapper .count",

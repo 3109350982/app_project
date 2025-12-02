@@ -74,6 +74,10 @@ class XHSCollectorService:
                 for card in cards:
                     if collected >= items_per_keyword:
                         break
+                    # 预设变量，避免解析过程中异常导致未赋值的局部变量被引用
+                    href = ""
+                    title = ""
+                    author_name = ""
                     try:
                         link_el = await card.query_selector(selectors["item_link"])
                         if not link_el:
@@ -91,23 +95,98 @@ class XHSCollectorService:
                             else:
                                 selectors_list = sel_list or []
 
+                            async def _extract_from_element(elem):
+                                if not elem:
+                                    return ""
+                                # 尝试读取可见文本
+                                text = (await elem.inner_text() or "").strip()
+                                if not text:
+                                    text = (await elem.text_content() or "").strip()
+                                if text:
+                                    return text
+
+                                # 常见属性兜底
+                                for attr in [
+                                    "title",
+                                    "aria-label",
+                                    "alt",
+                                    "data-title",
+                                    "data-desc",
+                                    "data-name",
+                                    "data-nickname",
+                                ]:
+                                    attr_text = await elem.get_attribute(attr)
+                                    if attr_text and attr_text.strip():
+                                        return attr_text.strip()
+                                return ""
+
                             for sel in selectors_list:
                                 if not sel:
                                     continue
-                                target = await el.query_selector(sel)
-                                if target:
-                                    text = (await target.inner_text()).strip()
-                                    if not text:
-                                        attr_text = await target.get_attribute("title")
-                                        text = (attr_text or "").strip()
+                                targets = await el.query_selector_all(sel)
+                                for target in targets:
+                                    text = await _extract_from_element(target)
                                     if text:
                                         return text
                             return ""
 
-                        title = await _first_text(card, [selectors["item_title"]])
-                        author_name = await _first_text(
-                            card, selectors.get("item_author_selectors", [])
+                        title_selectors = (
+                            selectors.get("item_title_selectors")
+                            or [selectors.get("item_title")]
                         )
+                        try:
+                            title = await _first_text(card, title_selectors)
+                        except Exception as e:
+                            # 标题解析异常直接兜底为空，避免中断
+                            print(f"[XHSCollector] title parse error: {e}")
+                            title = ""
+
+                        # 有些卡片把标题放在链接的 title/aria-label 上，做补充兜底
+                        if (not title) and link_el:
+                            link_title = (
+                                (await link_el.get_attribute("title"))
+                                or (await link_el.get_attribute("aria-label"))
+                                or ""
+                            ).strip()
+                            if link_title:
+                                title = link_title
+
+                        try:
+                            author_name = await _first_text(
+                                card, selectors.get("item_author_selectors", [])
+                            )
+                        except Exception as e:
+                            print(f"[XHSCollector] author parse error: {e}")
+                            author_name = ""
+                        if not author_name:
+                            # 兼容部分卡片作者昵称在 data-* 属性里
+                            data_attrs = [
+                                "data-author-name",
+                                "data-nickname",
+                                "data-user-name",
+                                "data-user",
+                            ]
+                            data_author = ""
+                            if link_el:
+                                for attr in data_attrs:
+                                    val = await link_el.get_attribute(attr)
+                                    if val and val.strip():
+                                        data_author = val.strip()
+                                        break
+                            if not data_author:
+                                # 有些昵称挂在最外层卡片节点上
+                                for attr in data_attrs:
+                                    val = await card.get_attribute(attr)
+                                    if val and val.strip():
+                                        data_author = val.strip()
+                                        break
+
+                            if data_author:
+                                author_name = data_author
+                            else:
+                                author_name = await _first_text(
+                                    card, selectors.get("item_author_fallback_selectors", [])
+                                )
                         # 原 _parse_int 替换为：
                         def _parse_int(text: str) -> int:
                             t = (text or "").strip().lower()
@@ -130,22 +209,38 @@ class XHSCollectorService:
                         like_count = 0
                         comment_count = 0
 
-                        like_text = await _first_text(
-                            card, selectors.get("item_like_count_selectors", [])
-                        )
+                        try:
+                            like_text = await _first_text(
+                                card, selectors.get("item_like_count_selectors", [])
+                            )
+                        except Exception as e:
+                            print(f"[XHSCollector] like parse error: {e}")
+                            like_text = ""
                         if like_text:
                             like_count = _parse_int(like_text)
 
-                        comment_text = await _first_text(
-                            card, selectors.get("item_comment_count_selectors", [])
-                        )
+                        try:
+                            comment_text = await _first_text(
+                                card, selectors.get("item_comment_count_selectors", [])
+                            )
+                        except Exception as e:
+                            print(f"[XHSCollector] comment parse error: {e}")
+                            comment_text = ""
                         if comment_text:
                             comment_count = _parse_int(comment_text)
 
-                        publish_time = await _first_text(
-                            card, selectors.get("item_publish_time_selectors", [])
-                        )
+                        try:
+                            publish_time = await _first_text(
+                                card, selectors.get("item_publish_time_selectors", [])
+                            )
+                        except Exception as e:
+                            print(f"[XHSCollector] publish time parse error: {e}")
+                            publish_time = ""
                         publish_ts = int(time.time())
+
+                        # 确保关键字段为字符串，避免空值导致的异常
+                        title = title or ""
+                        author_name = author_name or ""
 
                         item = {
                             "source": "xhs",
@@ -166,7 +261,22 @@ class XHSCollectorService:
                             f"✅ [XHS][Collector] 采集成功：kw={kw} url={href} title={title} like={like_count}"
                         )
                     except Exception as e:
-                        print("[XHSCollector] card parse error", e)
+                        try:
+                            snapshot = (await card.inner_html()) if card else ""
+                        except Exception:
+                            snapshot = ""
+                        print(
+                            "[XHSCollector] card parse error",
+                            e,
+                            "| partial data => href:",
+                            href,
+                            "title:",
+                            title,
+                            "author:",
+                            author_name,
+                        )
+                        if snapshot:
+                            print("[XHSCollector] card html snippet:", snapshot[:500])
 
                 if collected >= items_per_keyword:
                     break
