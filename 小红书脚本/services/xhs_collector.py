@@ -146,10 +146,54 @@ class XHSCollectorService:
                             link_title = (
                                 (await link_el.get_attribute("title"))
                                 or (await link_el.get_attribute("aria-label"))
+                                or (await link_el.get_attribute("alt"))
                                 or ""
                             ).strip()
                             if link_title:
                                 title = link_title
+
+                        # 如果标题仍为空，尝试从整张卡片的文本中粗略提取
+                        if not title:
+                            try:
+                                raw_card_text = await card.inner_text()
+                            except Exception:
+                                raw_card_text = ""
+
+                            lines = [
+                                l.strip()
+                                for l in (raw_card_text or "").replace("\r", "").split("\n")
+                                if l.strip()
+                            ]
+
+                            # 过滤明显不是标题的行（点赞、评论、作者等）
+                            noise_keywords = [
+                                "赞",
+                                "评论",
+                                "收藏",
+                                "转发",
+                                "发布",
+                                "小时前",
+                                "刚刚",
+                                "昨天",
+                                "前",
+                                "后",
+                            ]
+                            candidate_lines = []
+                            for line in lines:
+                                # 排除已经解析到的作者、时间、点赞等内容
+                                if (author_name and line == author_name) or (
+                                    publish_time and line == publish_time
+                                ):
+                                    continue
+                                if like_text and line == like_text:
+                                    continue
+                                if any(kw in line for kw in noise_keywords):
+                                    continue
+                                candidate_lines.append(line)
+
+                            # 优先选择最长的候选行，尽量接近期望的标题
+                            if candidate_lines:
+                                title = max(candidate_lines, key=len)
 
                         try:
                             author_name = await _first_text(
